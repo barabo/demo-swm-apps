@@ -1,0 +1,26 @@
+<!--
+  THIS IS THE APP HTML
+-->
+<html>
+  <head>
+    <script type="text/javascript" >
+    var messageEventHandler = function (event) {
+      console.log('RECEIVED A MESSAGE FROM', event);
+      if (event.origin === 'http://localhost:8001') {
+        console.log("MESSAGE FROM EMBEDDED APP", event.data);
+      }
+    }
+    window.addEventListener('message', messageEventHandler, false);
+    </script>
+  </head>
+
+  <body>
+    <h1>Mock EHR</h1>
+    <iframe
+      border=1
+      width=99%
+      height=85%
+      src="http://localhost:8001"
+    />
+  </body>
+</html>
