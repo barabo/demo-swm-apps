@@ -6,7 +6,7 @@
     <!-- DEBUGGING OUTPUT -->
     <script type="text/javascript">
       console.log(window);
-      const mockSMARTClient = {
+      const mock = {
         tokenResponse: {
           "access_token": "VGhpcyBpcyBhbiBleGFtcGxlIGFjY2Vzc190b2tlbiEK",
           "token_type": "bearer",
@@ -22,14 +22,8 @@
     <!-- Helper functions. -->
     <script type="text/javascript">
 
-    function inspectSMARTClient(client, callback=console.log) {
-      // Inspect the client, looking for configuration problems.
-      var c = client;
-      if (!client.tokenResponse) {
-        callback('SMART client missing expected tokenResponse');
-        c['tokenResponse'] = {};
-      }
-      const t = c.tokenResponse;
+    function inspectTokenResponse(tokenResponse, callback=console.log) {
+      const t = tokenResponse;
       if (!t.smart_messaging_origin) {
         callback('SMART client missing attribute "smart_messaging_origin", which is needed for SMART Web Messaging');
       }
@@ -53,8 +47,9 @@
     TODO:
       [ ] attempt to handshake every X seconds
       [ ] determine where logged errors should be seen
-      [ ] host this somewhere (personal repo?)
+      [ ] 
     NICE:
+      [ ] better CSS for ehr and app
       [ ] add a control panel to determine how often handshakes are done
         [ ] every X seconds
         [ ] only before other operations
@@ -65,9 +60,9 @@
       [ ] https url (assuming github.io works)
 
   -->
-  <body>
+  <body style="background-color: #c0ffee;">
     <h1>SMART Web Messaging App</h1>
-      <table border=1 id="appTable">
+      <table border=1 id="appTable" style="background-color: white;">
       <tr>
         <th>app state</th>
         <th>value</th>
@@ -81,12 +76,16 @@
         <td>0</td>
       </tr>
     </table>
-
+    <br>
+    <button>Handshake -> EHR</button>
+    <button>ui.close</button>
+    <button>ui.launchActivity</button>
+    <button>scratchpad.create</button>
     <!-- Update table above. -->
     <script type="text/javascript">
       const isEmbedded = window.parent !== window.self;
       document.getElementById("isEmbedded").innerText = isEmbedded;
-      const clientSettings = inspectSMARTClient(mockSMARTClient, console.log);
+      const clientSettings = inspectTokenResponse(mock.tokenResponse, console.log);
       const table = document.getElementById("appTable");
       for (const [key, value] of Object.entries(clientSettings)) {
         const tr = document.createElement('tr');

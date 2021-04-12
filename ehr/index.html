@@ -14,13 +14,22 @@
     </script>
   </head>
 
-  <body>
-    <h1>Mock EHR</h1>
+  <body style="background-color: #00cafe">
+    <h1>Mock EHR DEMO</h1>
+    <table border="1" style="background-color: white;">
+      <tr><th>ehr state</th><th>value</th></tr>
+      <tr><td>handshakes</td><td>0</td></tr>
+    </table>
+    <br>
+    <button>Close App</button>
+    <button>Handshake -> App</button>
+    <hr>
     <iframe
+      id="appFrame"
       border=1
-      width=99%
-      height=85%
+      width="99%"
+      height="65%"
       src="http://localhost:8001"
-    />
+    ></iframe>
   </body>
 </html>
