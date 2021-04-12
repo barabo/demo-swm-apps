@@ -3,33 +3,70 @@
 -->
 <html>
   <head>
-    <script type="text/javascript" >
+    <script type="text/javascript">
+
+    appOrigin = 'http://localhost:8001';
+
     var messageEventHandler = function (event) {
-      console.log('RECEIVED A MESSAGE FROM', event);
-      if (event.origin === 'http://localhost:8001') {
+      if (event.origin === appOrigin) {
         console.log("MESSAGE FROM EMBEDDED APP", event.data);
       }
     }
-    window.addEventListener('message', messageEventHandler, false);
+
+    function showApp(display="") {
+      document.getElementById("appFrame").style.display = display;
+    }
+
+    function closeApp() {
+      // TODO: signal the app that it's closing early
+      console.log('TODO: tell the app that its closing early');
+    }
+
+    function reloadApp() {
+      document.getElementById("appFrame").src += '';
+      document.getElementById('handshakes').innerText = 0;
+    }
+
+    function handshake() {
+      const handshakes = window.document.getElementById('handshakes');
+      handshakes.innerText = ~~handshakes.innerText + 1;
+    }
+
     </script>
   </head>
 
   <body style="background-color: #00cafe">
-    <h1>Mock EHR DEMO</h1>
+    <h1>SMART Web Messaging Demo</h1>
+    <h2>Mock EHR</h2>
     <table border="1" style="background-color: white;">
       <tr><th>ehr state</th><th>value</th></tr>
-      <tr><td>handshakes</td><td>0</td></tr>
+      <tr><td>handshakes</td><td><div id="handshakes">0</div></td></tr>
     </table>
-    <br>
-    <button>Close App</button>
-    <button>Handshake -> App</button>
+
+    <hr>
+    <button onclick="showApp()">Show App</button>
+    <button onclick="showApp('none')">Hide App</button>
+    <button onclick="reloadApp()">Reload App</button>
+    <button onclick="closeApp()">Close App</button>
+    <button onclick="handshake()">Handshake -> App</button>
+
     <hr>
     <iframe
       id="appFrame"
       border=1
       width="99%"
       height="65%"
-      src="http://localhost:8001"
-    ></iframe>
+    >
+      <h1>ERROR: iframes are disabled in this browser!</h1>
+    </iframe>
+
+    <script type="text/javascript">
+
+      // Load the app in the iframe, linking it to the event listener above.
+      document.getElementById('appFrame').src = appOrigin;
+      window.addEventListener('message', messageEventHandler, false);
+
+    </script>
+
   </body>
 </html>
