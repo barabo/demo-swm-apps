@@ -3,8 +3,10 @@
 -->
 <html>
   <head>
-    <!-- DEBUGGING OUTPUT -->
+    <script src="https://unpkg.com/uuid@latest/dist/umd/uuidv4.min.js"></script>
+
     <script type="text/javascript">
+
       const mock = {
         tokenResponse: {
           "access_token": "VGhpcyBpcyBhbiBleGFtcGxlIGFjY2Vzc190b2tlbiEK",
@@ -16,36 +18,130 @@
           "state": "c3RhdGUgZXhhbXBsZSEK",
         }
       }
-    </script>
 
-    <!-- Helper functions. -->
-    <script type="text/javascript">
+      const handshakes = new Map();
 
-    function inspectTokenResponse(tokenResponse, callback=console.log) {
-      const t = tokenResponse;
-      if (!t.smart_messaging_origin) {
-        callback('SMART client missing attribute "smart_messaging_origin", which is needed for SMART Web Messaging');
-      }
-      if (!t.smart_web_messaging_handle) {
-        callback('SMART client missing attribute "smart_web_messaging_handle", which is needed for SMART Web Messaging');
-      }
-      return {
-        "access_token": t.access_token,
-        "token_type": t.token_type,
-        "expires_in": t.expires_in,
-        "scope": t.scope,
-        "smart_web_messaging_handle": t.smart_web_messaging_handle,
-        "smart_messaging_origin": t.smart_messaging_origin,
-        "state": t.state,
-      }
-    }
+      // This would be known in advance when the app was configured in the EHR.
+      ehrOrigin = 'http://localhost:8000';
 
+      var messageEventHandler = function (event) {
+        if (event.origin === ehrOrigin && event.data) {
+          respondTo(event);
+        }
+      }
+      window.addEventListener('message', messageEventHandler, false);
+
+      function increment(id) {
+        const counter = window.document.getElementById(id);
+        counter.innerText = parseInt(counter.innerText) + 1;
+      }
+
+      // TODO: consider separating event.data as message and whatever else is needed from event
+      function respondTo(event) {
+        const message = event.data;
+        if (message && message.messageType) {
+          if (message.messageType === 'status.handshake') {
+            increment('handshakes.received');
+            if (!message.responseToMessageId) {
+              sendHandshake(
+                event.source,
+                event.origin,
+                message.messagingHandle,
+                message.messageId,
+              );
+              increment('handshakes.sent');
+            }
+          } else {
+            console.warn('APP: UNHANDLED MESSAGE TYPE:', message.messageType);
+          }
+        } else {
+          console.warn('APP: can not respond to event with no message or messageType');
+        }
+      }
+
+      function inspectTokenResponse(tokenResponse, callback=console.log) {
+        const t = tokenResponse;
+        if (!t.smart_messaging_origin) {
+          callback('SMART client missing attribute "smart_messaging_origin", which is needed for SMART Web Messaging');
+        }
+        if (!t.smart_web_messaging_handle) {
+          callback('SMART client missing attribute "smart_web_messaging_handle", which is needed for SMART Web Messaging');
+        }
+        return {
+          "access_token": t.access_token,
+          "token_type": t.token_type,
+          "expires_in": t.expires_in,
+          "scope": t.scope,
+          "smart_web_messaging_handle": t.smart_web_messaging_handle,
+          "smart_messaging_origin": t.smart_messaging_origin,
+          "state": t.state,
+        }
+      }
+
+      // TODO: import this function from elsewhere...
+      function sendHandshake(targetWindow, targetOrigin, messagingHandle, responseToMessageId) {
+        const envelope = {
+          'messagingHandle': messagingHandle,
+          'messageId': uuidv4(),
+          'messageType': 'status.handshake',
+          'payload': {},
+        };
+
+        if (responseToMessageId) {
+          envelope['responseToMessageId'] = responseToMessageId;
+        }
+
+        if (handshakes.has(envelope.messageId)) {
+          console.error('Duplicate handshake!');
+        } else {
+          handshakes.set(envelope.messageId, envelope);
+        }
+
+        targetWindow.postMessage(
+          envelope,
+          targetOrigin,
+        );
+      }
+
+      // TODO: import this function from elsewhere...
+      function sendUiDone(targetWindow, targetOrigin, messagingHandle) {
+        const envelope = {
+          'messagingHandle': messagingHandle,
+          'messageId': uuidv4(),
+          'messageType': 'ui.done',
+          'payload': {},
+        };
+        targetWindow.postMessage(
+          envelope,
+          targetOrigin,
+        );
+      }
+
+      function clickHandshake() {
+        if (window.opener || isEmbedded) {
+          sendHandshake(
+            isEmbedded ? window.parent : window.opener,
+            clientSettings.smart_messaging_origin,
+            clientSettings.smart_web_messaging_handle,
+          );
+          increment('handshakes.sent');
+        } else {
+          console.warn('Unable to send a window.postMessage - no receiver');
+        }
+      }
+
+      function uiDone() {
+        sendUiDone(
+          isEmbedded ? window.parent : window.opener,
+          clientSettings.smart_messaging_origin,
+          clientSettings.smart_web_messaging_handle,
+        )
+      }
     </script>
   </head>
   <!--
     TODO:
       [ ] attempt to handshake every X seconds
-      [ ] determine where logged errors should be seen
       [ ] 
     NICE:
       [ ] better CSS for ehr and app
@@ -71,15 +167,21 @@
         <td id="isEmbedded">uninitialized</td>
       </tr>
       <tr>
-        <td>successful handshakes</td>
-        <td>0</td>
+        <td>handshakes sent</td>
+        <td id="handshakes.sent">0</td>
+      </tr>
+      <tr>
+        <td>handshakes received</td>
+        <td id="handshakes.received">0</td>
       </tr>
     </table>
+
     <br>
-    <button>Handshake -> EHR</button>
-    <button>ui.close</button>
-    <button>ui.launchActivity</button>
-    <button>scratchpad.create</button>
+    <button onclick="clickHandshake()">Handshake -> EHR</button>
+    <button onclick="uiDone()">ui.done</button>
+    <button onclick="uiLaunchActivity()">ui.launchActivity</button>
+    <button onclick="scratchpadCreate()">scratchpad.create</button>
+
     <!-- Update table above. -->
     <script type="text/javascript">
       const isEmbedded = window.parent !== window.self;
@@ -96,11 +198,8 @@
         tr.appendChild(val);
         table.appendChild(tr);
       }
-      if (window.opener || isEmbedded) {
-        const targetWindow = window.parent !== window.self ? window.parent : window.opener;
-        targetWindow.postMessage('Hello, world!', clientSettings.smart_messaging_origin);
-      } else {
-        console.log('Unable to send a window.postMessage - no receiver')
+      if (!window.opener && !isEmbedded) {
+        console.warn('Unable to send a window.postMessage - no receiver');
       }
     </script>
   </body>

@@ -1,15 +1,51 @@
 <!--
-  THIS IS THE APP HTML
+  THIS IS THE EHR HTML
 -->
 <html>
   <head>
+    <script src="https://unpkg.com/uuid@latest/dist/umd/uuidv4.min.js"></script>
     <script type="text/javascript">
 
+    const handshakes = new Map();
+
+    // This would be known in advance when the app was configured in the EHR.
     appOrigin = 'http://localhost:8001';
 
+    function increment(id) {
+      const counter = window.document.getElementById(id);
+      counter.innerText = parseInt(counter.innerText) + 1;
+    }
+
     var messageEventHandler = function (event) {
-      if (event.origin === appOrigin) {
-        console.log("MESSAGE FROM EMBEDDED APP", event.data);
+      if (event.origin === appOrigin && event.data) {
+        console.debug("EHR: RECEIVED MESSAGE FROM EMBEDDED APP", event.data);
+        respondTo(event);
+      }
+    }
+    window.addEventListener('message', messageEventHandler, false);
+
+    // TODO: consider separating event.data as message and whatever else is needed from event
+    function respondTo(event) {
+      const message = event.data;
+      if (message && message.messageType) {
+        if (message.messageType === 'status.handshake') {
+          increment('handshakes.received');
+          if (!message.responseToMessageId) {
+            sendHandshake(
+              event.source,
+              event.origin,
+              message.messagingHandle,
+              message.messageId,
+            );
+            increment('handshakes.sent');
+          }
+        } else if (message.messageType === 'ui.done') {
+          showApp('none');
+        } else {
+          console.warn('UNHANDLED MESSAGE TYPE:', message.messageType);
+        }
+      } else {
+        console.warn('EHR: can not respond to event with no message or messageType');
       }
     }
 
@@ -24,14 +60,43 @@
 
     function reloadApp() {
       document.getElementById("appFrame").src += '';
-      document.getElementById('handshakes').innerText = 0;
+      document.getElementById('handshakes.sent').innerText = 0;
+      document.getElementById('handshakes.received').innerText = 0;
     }
 
-    function handshake() {
-      const handshakes = window.document.getElementById('handshakes');
-      handshakes.innerText = ~~handshakes.innerText + 1;
+    // TODO: import this function from elsewhere...
+    function sendHandshake(targetWindow, targetOrigin, messagingHandle, responseToMessageId) {
+      const envelope = {
+        'messagingHandle': messagingHandle,
+        'messageId': uuidv4(),
+        'messageType': 'status.handshake',
+        'payload': {},
+      };
+
+      if (responseToMessageId) {
+        envelope['responseToMessageId'] = responseToMessageId;
+      }
+
+      if (handshakes.has(envelope.messageId)) {
+        console.error('Duplicate handshake!');
+      } else {
+        handshakes.set(envelope.messageId, envelope);
+      }
+
+      targetWindow.postMessage(
+        envelope,
+        targetOrigin,
+      );
     }
 
+    function clickSendHandshake() {
+      sendHandshake(
+        window.frames[0],
+        appOrigin,
+        uuidv4(),  // Or something - anything unique
+      );
+      increment('handshakes.sent');
+    }
     </script>
   </head>
 
@@ -40,7 +105,8 @@
     <h2>Mock EHR</h2>
     <table border="1" style="background-color: white;">
       <tr><th>ehr state</th><th>value</th></tr>
-      <tr><td>handshakes</td><td><div id="handshakes">0</div></td></tr>
+      <tr><td>handshakes sent</td><td><div id="handshakes.sent">0</div></td></tr>
+      <tr><td>handshakes received</td><td><div id="handshakes.received">0</div></td></tr>
     </table>
 
     <hr>
@@ -48,7 +114,7 @@
     <button onclick="showApp('none')">Hide App</button>
     <button onclick="reloadApp()">Reload App</button>
     <button onclick="closeApp()">Close App</button>
-    <button onclick="handshake()">Handshake -> App</button>
+    <button onclick="clickSendHandshake()">Handshake -> App</button>
 
     <hr>
     <iframe
@@ -64,7 +130,6 @@
 
       // Load the app in the iframe, linking it to the event listener above.
       document.getElementById('appFrame').src = appOrigin;
-      window.addEventListener('message', messageEventHandler, false);
 
     </script>
 
