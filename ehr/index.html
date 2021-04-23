@@ -18,7 +18,6 @@
 
     var messageEventHandler = function (event) {
       if (event.origin === appOrigin && event.data) {
-        console.debug("EHR: RECEIVED MESSAGE FROM EMBEDDED APP", event.data);
         respondTo(event);
       }
     }
@@ -64,21 +63,28 @@
       document.getElementById('handshakes.received').innerText = 0;
     }
 
-    // TODO: import this function from elsewhere...
-    function sendHandshake(targetWindow, targetOrigin, messagingHandle, responseToMessageId) {
+    function getEnvelope(messagingHandle, messageType, responseToMessageId) {
       const envelope = {
+        'messageType': messageType,
         'messagingHandle': messagingHandle,
         'messageId': uuidv4(),
-        'messageType': 'status.handshake',
         'payload': {},
       };
-
       if (responseToMessageId) {
         envelope['responseToMessageId'] = responseToMessageId;
       }
+      return envelope;
+    }
 
+    // TODO: import this function from elsewhere...
+    function sendHandshake(targetWindow, targetOrigin, messagingHandle, responseToMessageId) {
+      const envelope = getEnvelope(messagingHandle, 'status.handshake', responseToMessageId);
+
+      // Sanity checking.
       if (handshakes.has(envelope.messageId)) {
-        console.error('Duplicate handshake!');
+        console.error('EHR: Duplicate handshake!');
+      } else if (handshakes.has(envelope.responseToMessageId)) {
+        console.warn('EHR: Already responded to', envelope.responseToMessageId);
       } else {
         handshakes.set(envelope.messageId, envelope);
       }
