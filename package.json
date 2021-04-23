@@ -1,0 +1,26 @@
+{
+  "name": "demo-swm-apps",
+  "version": "1.0.0",
+  "description": "A pair of apps to facilitate development of the SMART Web Messaging Client library.",
+  "main": "",
+  "dependencies": {
+    "concurrently": "^6.0.2",
+    "live-server": "^1.2.1"
+  },
+  "scripts": {
+    "all": "concurrently npm:app npm:ehr",
+    "app": "live-server app --cors --port=8001 --no-browser",
+    "ehr": "live-server ehr --cors --port=8000 --no-browser",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/barabo/demo-swm-apps.git"
+  },
+  "author": "Carl Anderson (carl.anderson@microsoft.com)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/barabo/demo-swm-apps/issues"
+  },
+  "homepage": "https://github.com/barabo/demo-swm-apps#readme"
+}
